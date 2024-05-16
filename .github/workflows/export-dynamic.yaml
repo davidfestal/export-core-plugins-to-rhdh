@@ -1,0 +1,62 @@
+name: Export Dynamic Plugin Packages
+on:
+  workflow_dispatch:
+    inputs:
+      node-version:
+        description: node-version to execute the export
+        required: false
+        type: choice
+        default: '18.x'
+        options:
+          - '18.x'
+          - '20.x'
+      backstage-release:
+        description: backstage version to export the dynamic plugins from 
+        required: false
+        default: 'v1.23.4' # corresponds to RHDH 1.1
+  push:
+    tags: ["v*.*.*"]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+
+    name: Prepare
+    outputs:
+      backstage-release: ${{ steps.set-env-vars.outputs.BACKSTAGE_RELEASE }}
+      node-version: ${{ steps.set-env-vars.outputs.NODE_VERSION }}
+
+    steps:
+      - name: Set environment variables
+        id: set-env-vars
+        shell: bash
+        run: |
+          if [[ "${{ github.event.inputs.backstage-release }}" != "" ]]
+          then
+            echo "BACKSTAGE_RELEASE=${{ github.event.inputs.backstage-release }}" >> $GITHUB_OUTPUT
+            echo "NODE_VERSION=${{ github.event.inputs.node-version }}" >> $GITHUB_OUTPUT
+          else
+            echo "BACKSTAGE_RELEASE=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "NODE_VERSION=18.x" >> $GITHUB_OUTPUT
+          fi
+
+
+  export:
+    needs: prepare
+    uses: davidfestal/rhdh-plugin-export-utils/.github/workflows/export-dynamic.yaml@add-reusable-workflow
+
+    with:
+      plugins-repo: backstage/backstage
+      plugins-repo-ref: ${{ needs.prepare.outputs.backstage-release }}
+      overlay-repo: ${{ github.repository }}
+      overlay-repo-ref: ${{ github.ref_name }}
+      node-version: ${{ needs.prepare.outputs.node-version }}
+      publish-release-assets: ${{ github.event.inputs.backstage-release == '' }}
+
+    permissions:
+      contents: write
+    
