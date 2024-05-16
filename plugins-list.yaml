@@ -10,7 +10,7 @@ plugins/catalog-import:
 plugins/catalog-unprocessed-entities:
 plugins/catalog:
 
-plugins/scaffolder-backend:
+#plugins/scaffolder-backend:
 plugins/scaffolder:
 
 plugins/search-backend-module-catalog:
